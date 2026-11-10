@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Conex Lab</title>
+    <meta name="description" content="Sistema de gestão para empresa de impressão 3D: orçamentos, pedidos, estoque, produtos, calculadora de custos e financeiro." />
+    <meta property="og:title" content="3D Conex Lab" />
+    <meta property="og:description" content="Sistema de gestão para empresa de impressão 3D: orçamentos, pedidos, estoque, produtos, calculadora de custos e financeiro." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/static/logo.png" />
+    <link rel="stylesheet" href="/static/tema.css" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script>
+      try {
+        var t = localStorage.getItem('tema') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.tema = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

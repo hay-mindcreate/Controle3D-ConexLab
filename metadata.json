@@ -1,0 +1,6 @@
+{
+  "name": "Controle 3D Conex Lab",
+  "description": "Sistema de gestão para empresa de impressão 3D: orçamentos, pedidos, estoque, produtos, calculadora de custos e financeiro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

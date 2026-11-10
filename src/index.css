@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+/* Layout principal de alta fidelidade sem sobreposições ou cortes */
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+#root {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+nav {
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: 220px !important;
+  flex: 0 0 220px !important;
+  background: var(--card) !important;
+  border-right: 1px solid var(--border) !important;
+  padding: 14px !important;
+  position: sticky !important;
+  top: 0 !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  z-index: 20 !important;
+  box-sizing: border-box !important;
+}
+
+main {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 220px) !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Evita que tabelas fiquem espremidas ou cortadas */
+.wrap {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 180px) !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--line) !important;
+}
+
+.wrap table {
+  min-width: 640px !important;
+  width: 100% !important;
+}
+
+/* Evita que cards dos KPIs no Dashboard quebrem layout e sobreponham texto */
+.grid.kpis {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  gap: 12px !important;
+  margin-bottom: 16px !important;
+}
+
+.card.kpi {
+  min-height: 110px !important;
+  height: auto !important;
+  overflow: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justifyContent: space-between !important;
+}
+
+.card.kpi h2 {
+  word-break: break-word !important;
+  font-size: 1.45rem !important;
+  margin: 4px 0 !important;
+}
+
+/* Grid do Kanban responsivo com scroll horizontal suave */
+.kanban {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(210px, 1fr)) !important;
+  gap: 12px !important;
+  overflow-x: auto !important;
+  padding-bottom: 14px !important;
+  align-items: start !important;
+}
+
+.col {
+  height: calc(100vh - 200px) !important;
+  min-height: 480px !important;
+  overflow-y: auto !important;
+}
+
+/* Responsividade para telas menores e tablets */
+@media (max-width: 860px) {
+  #root {
+    flex-direction: column !important;
+  }
+
+  nav {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    position: static !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 10px 14px !important;
+  }
+
+  nav img {
+    height: 38px !important;
+    width: auto !important;
+    margin: 0 12px 0 0 !important;
+  }
+
+  nav h6 {
+    display: none !important;
+  }
+
+  nav a {
+    padding: 6px 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  .tema-btn {
+    width: auto !important;
+    margin-left: auto !important;
+    margin-top: 0 !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 14px !important;
+  }
+}
+
+/* Estilos limpos para impressão / PDF */
+@media print {
+  nav, .tema-btn, .no-print, button, .btn {
+    display: none !important;
+  }
+  body, #root, main {
+    background: #fff !important;
+    color: #000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
