@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatBrl, round2 } from '../calc';
 import { db, EMPRESA } from '../db';
+import { exportarTabelaParaCsv } from '../importExport';
 import { criarPedidoDeOrcamento } from '../services';
 import { ItemOrcamento, Orcamento } from '../types';
 import { NavTab } from './Navigation';
@@ -230,6 +231,45 @@ export const OrcamentosView: React.FC<OrcamentosViewProps> = ({
     const novoPedido = criarPedidoDeOrcamento(modalAprovar, prazoPedido, doEstoque);
     setModalAprovar(null);
     onNavigate('pedidos', { pedidoId: novoPedido.id });
+  };
+
+  const handleExportarCsv = () => {
+    const cabecalhos = [
+      'ID Orçamento',
+      'Data',
+      'Cliente',
+      'Canal',
+      'Subtotal (R$)',
+      'Desconto (R$)',
+      'Frete (R$)',
+      'Total (R$)',
+      'Válido Até',
+      'Status',
+      'Prazo',
+      'Pagamento',
+      'Itens',
+    ];
+    const linhas = filtrados.map((o) => {
+      const cli = data.clientes.find((c) => c.id === o.cliente_id)?.nome || 'Balcão';
+      const canal = o.canal_id ? data.canais.find((c) => c.id === o.canal_id)?.nome : 'Balcão';
+      const itensStr = o.itens.map((it) => `${it.qtd}x ${it.descricao}`).join(' | ');
+      return [
+        `#${String(o.id).padStart(4, '0')}`,
+        o.data,
+        cli,
+        canal || 'Balcão',
+        o.subtotal.toFixed(2),
+        o.desconto.toFixed(2),
+        o.frete.toFixed(2),
+        o.total.toFixed(2),
+        o.validoAte,
+        o.statusExib,
+        o.prazo || '',
+        o.pagamento || '',
+        itensStr,
+      ];
+    });
+    exportarTabelaParaCsv('orcamentos', cabecalhos, linhas);
   };
 
   // Se modo de edição/novo aberto
@@ -760,9 +800,20 @@ export const OrcamentosView: React.FC<OrcamentosViewProps> = ({
   // Lista padrão de orçamentos
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ margin: 0 }}>Orçamentos ({orcamentosComCalculos.length})</h2>
-        <button onClick={handleIniciarNovo}>+ Novo Orçamento</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="sec"
+            onClick={handleExportarCsv}
+            title="Exportar orçamentos para arquivo CSV"
+            disabled={filtrados.length === 0}
+          >
+            📥 Exportar CSV
+          </button>
+          <button onClick={handleIniciarNovo}>+ Novo Orçamento</button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -843,7 +894,7 @@ export const OrcamentosView: React.FC<OrcamentosViewProps> = ({
                       </button>
                       {o.status === 'aberto' && (
                         <button
-                          style={{ padding: '3px 8px', fontSize: 13 }}
+                          style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                           onClick={() => {
                             setModalAprovar(o);
                             setPrazoPedido(hoje);
@@ -852,6 +903,14 @@ export const OrcamentosView: React.FC<OrcamentosViewProps> = ({
                           Aprovar
                         </button>
                       )}
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleExcluir(o.id)}
+                        title="Excluir orçamento permanentemente"
+                      >
+                        Excluir
+                      </button>
                     </td>
                   </tr>
                 );

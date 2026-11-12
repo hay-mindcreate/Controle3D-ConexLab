@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatBrl } from '../calc';
 import { db } from '../db';
+import { exportarTabelaParaCsv } from '../importExport';
 import { addMonths, pagarLancamento } from '../services';
 import { Lancamento } from '../types';
 import { NavTab } from './Navigation';
@@ -121,11 +122,59 @@ export const FinanceiroView: React.FC<FinanceiroViewProps> = ({ onNavigate }) =>
     });
   };
 
+  const handleExcluirLancamento = (id: number) => {
+    const l = data.lancamentos.find((x) => x.id === id);
+    const desc = l ? l.descricao : `#${id}`;
+    if (!confirm(`Deseja realmente excluir permanentemente o lançamento "${desc}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    db.update((state) => {
+      state.lancamentos = state.lancamentos.filter((x) => x.id !== id);
+    });
+  };
+
+  const handleExportarCsv = () => {
+    const cabecalhos = [
+      'ID',
+      'Tipo',
+      'Categoria',
+      'Natureza',
+      'Descrição',
+      'Valor (R$)',
+      'Vencimento',
+      'Pago Em',
+      'Status',
+      'Recorrência',
+    ];
+    const linhas = lancamentosMes.map((l) => [
+      l.id,
+      l.tipo.toUpperCase(),
+      l.categoria,
+      l.natureza,
+      l.descricao,
+      l.valor.toFixed(2),
+      l.vencimento,
+      l.pago_em || '',
+      l.cancelado ? 'Cancelado' : l.pago_em ? 'Pago' : 'Pendente',
+      l.recorrencia || 'Não',
+    ]);
+    exportarTabelaParaCsv(`financeiro-${mesSelecionado}`, cabecalhos, linhas);
+  };
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ margin: 0 }}>Controle Financeiro</h2>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="sec"
+            onClick={handleExportarCsv}
+            title="Exportar lançamentos do mês para arquivo CSV"
+            disabled={lancamentosMes.length === 0}
+          >
+            📥 Exportar CSV
+          </button>
           <button onClick={() => setModalNovo(true)}>+ Novo Lançamento</button>
         </div>
       </div>
@@ -321,10 +370,19 @@ export const FinanceiroView: React.FC<FinanceiroViewProps> = ({ onNavigate }) =>
                           className="sec bad"
                           style={{ padding: '3px 8px', fontSize: 13, marginLeft: 4 }}
                           onClick={() => handleCancelarLancamento(l.id)}
+                          title="Cancelar lançamento"
                         >
                           ✕
                         </button>
                       )}
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13, marginLeft: 4 }}
+                        onClick={() => handleExcluirLancamento(l.id)}
+                        title="Excluir lançamento financeiro permanentemente"
+                      >
+                        Excluir
+                      </button>
                     </td>
                   </tr>
                 );

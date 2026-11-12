@@ -380,6 +380,9 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
                     }}
                     style={{ flex: 1 }}
                   >
+                    {data.materiais.filter((m) => m.ativo).length === 0 && (
+                      <option value="0">Nenhum filamento cadastrado</option>
+                    )}
                     {data.materiais.filter((m) => m.ativo).map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.tipo} {m.cor} ({m.marca})
@@ -413,14 +416,47 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
                   )}
                 </div>
               ))}
-              <button
-                type="button"
-                className="sec"
-                style={{ fontSize: 12, padding: '4px 8px' }}
-                onClick={() => setFormMateriais((prev) => [...prev, { material_id: data.materiais[0]?.id || 1, gramas: 10 }])}
-              >
-                + Adicionar Outra Cor / Filamento
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="sec"
+                  style={{ fontSize: 12, padding: '4px 8px' }}
+                  onClick={() => setFormMateriais((prev) => [...prev, { material_id: data.materiais[0]?.id || 1, gramas: 10 }])}
+                >
+                  + Adicionar Outra Cor / Filamento
+                </button>
+                <button
+                  type="button"
+                  className="sec"
+                  style={{ fontSize: 12, padding: '4px 8px' }}
+                  onClick={() => {
+                    const tipo = prompt('Tipo do material (ex: PLA, PETG, ABS):', 'PLA');
+                    if (!tipo || !tipo.trim()) return;
+                    const cor = prompt('Cor do filamento:', 'Preto') || 'Preto';
+                    const marca = prompt('Marca do filamento:', 'Geral') || 'Geral';
+                    db.update((state) => {
+                      const nextId = state.materiais.length > 0 ? Math.max(...state.materiais.map((m) => m.id)) + 1 : 1;
+                      state.materiais.push({
+                        id: nextId,
+                        tipo: tipo.trim().toUpperCase(),
+                        cor: cor.trim(),
+                        marca: marca.trim(),
+                        minimo_g: 500,
+                        ativo: true,
+                      });
+                      setFormMateriais((prev) => {
+                        const next = [...prev];
+                        if (next.length > 0 && (next[0].material_id === 0 || next[0].material_id === 1)) {
+                          next[0].material_id = nextId;
+                        }
+                        return next;
+                      });
+                    });
+                  }}
+                >
+                  ⚡ Cadastrar Novo Filamento
+                </button>
+              </div>
 
               <h4 style={{ margin: '16px 0 6px', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
                 Insumos / Embalagem
@@ -470,16 +506,44 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
                   </button>
                 </div>
               ))}
-              {data.insumos.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                {data.insumos.length > 0 && (
+                  <button
+                    type="button"
+                    className="sec"
+                    style={{ fontSize: 12, padding: '4px 8px' }}
+                    onClick={() => setFormInsumos((prev) => [...prev, { insumo_id: data.insumos[0]?.id || 1, qtd: 1 }])}
+                  >
+                    + Adicionar Insumo da Receita
+                  </button>
+                )}
                 <button
                   type="button"
                   className="sec"
                   style={{ fontSize: 12, padding: '4px 8px' }}
-                  onClick={() => setFormInsumos((prev) => [...prev, { insumo_id: data.insumos[0].id, qtd: 1 }])}
+                  onClick={() => {
+                    const nome = prompt('Nome do insumo (ex: Argola, Parafuso M3, Embalagem):');
+                    if (!nome || !nome.trim()) return;
+                    const custo = parseFloat(prompt('Custo unitário em R$:', '0.50') || '0.50');
+                    const un = prompt('Unidade de medida (un, cm, m):', 'un') || 'un';
+                    db.update((state) => {
+                      const nextId = state.insumos.length > 0 ? Math.max(...state.insumos.map((i) => i.id)) + 1 : 1;
+                      state.insumos.push({
+                        id: nextId,
+                        nome: nome.trim(),
+                        unidade: un.trim(),
+                        custo_unit: isNaN(custo) ? 0.5 : custo,
+                        minimo: 10,
+                        fornecedor: '',
+                        ativo: true,
+                      });
+                      setFormInsumos((prev) => [...prev, { insumo_id: nextId, qtd: 1 }]);
+                    });
+                  }}
                 >
-                  + Adicionar Insumo da Receita
+                  ⚡ Cadastrar Novo Insumo
                 </button>
-              )}
+              </div>
             </div>
 
             {/* Lado direito: Formação de Preço e Cálculo em tempo real */}

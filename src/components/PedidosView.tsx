@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatBrl, formatDec } from '../calc';
 import { db } from '../db';
+import { exportarTabelaParaCsv } from '../importExport';
 import {
   moverPedido,
   ORDEM_STATUS,
@@ -106,6 +107,54 @@ export const PedidosView: React.FC<PedidosViewProps> = ({ onNavigate, pedidoId }
     setModalFalha(null);
   };
 
+  const handleExcluirPedido = (id: number) => {
+    if (!confirm(`Deseja realmente excluir permanentemente o pedido #${String(id).padStart(4, '0')}? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    db.update((state) => {
+      state.pedidos = state.pedidos.filter((p) => p.id !== id);
+    });
+    if (pedidoSelecionadoId === id) {
+      setPedidoSelecionadoId(null);
+    }
+  };
+
+  const handleExportarCsv = () => {
+    const cabecalhos = [
+      'ID Pedido',
+      'Criado Em',
+      'Tipo',
+      'Cliente',
+      'Canal',
+      'Prazo',
+      'Status',
+      'Total (R$)',
+      'Custo Extra (R$)',
+      'Observações',
+      'Itens',
+    ];
+    const linhas = pedidosFiltrados.map((p) => {
+      const cli = p.cliente_id ? data.clientes.find((c) => c.id === p.cliente_id)?.nome : (p.tipo === 'estoque' ? 'Reposição Estoque' : 'Balcão');
+      const canal = p.canal_id ? data.canais.find((c) => c.id === p.canal_id)?.nome : 'Balcão';
+      const total = p.itens.reduce((acc, it) => acc + it.qtd * it.preco_unit, 0) - p.desconto + p.frete;
+      const itensStr = p.itens.map((it) => `${it.qtd}x ${it.descricao}`).join(' | ');
+      return [
+        `#${String(p.id).padStart(4, '0')}`,
+        p.criado_em.split('T')[0],
+        p.tipo,
+        cli || 'Balcão',
+        canal || 'Balcão',
+        p.prazo || '',
+        p.status,
+        total.toFixed(2),
+        p.custo_extra.toFixed(2),
+        p.observacoes || '',
+        itensStr,
+      ];
+    });
+    exportarTabelaParaCsv('pedidos-producao', cabecalhos, linhas);
+  };
+
   const handleSalvarNovoPedido = (e: React.FormEvent) => {
     e.preventDefault();
     const itensValidos = novoItens.filter((it) => it.descricao.trim() || it.produtoId);
@@ -207,6 +256,9 @@ export const PedidosView: React.FC<PedidosViewProps> = ({ onNavigate, pedidoId }
                 Cancelar Pedido
               </button>
             )}
+            <button className="sec bad" onClick={() => handleExcluirPedido(pedidoDetalhe.id)} title="Excluir pedido permanentemente">
+              Excluir Pedido
+            </button>
           </div>
         </div>
 
@@ -324,6 +376,15 @@ export const PedidosView: React.FC<PedidosViewProps> = ({ onNavigate, pedidoId }
             <option value="cliente">Pedidos de Cliente</option>
             <option value="estoque">Reposição de Estoque</option>
           </select>
+          <button
+            type="button"
+            className="sec"
+            onClick={handleExportarCsv}
+            title="Exportar pedidos para arquivo CSV"
+            disabled={pedidosFiltrados.length === 0}
+          >
+            📥 Exportar CSV
+          </button>
           <button onClick={() => setModalNovoPedido(true)}>+ Novo Pedido Direto</button>
         </div>
       </div>
@@ -409,6 +470,18 @@ export const PedidosView: React.FC<PedidosViewProps> = ({ onNavigate, pedidoId }
                               ▶
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className="sec bad"
+                            style={{ padding: '2px 6px', fontSize: 11 }}
+                            title="Excluir este pedido"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExcluirPedido(ped.id);
+                            }}
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
                     </div>

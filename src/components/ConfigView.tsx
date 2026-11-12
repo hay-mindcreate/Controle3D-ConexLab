@@ -171,11 +171,10 @@ export const ConfigView: React.FC<ConfigViewProps> = ({ onNavigate }) => {
     reader.readAsText(file);
   };
 
-  const handleResetPadrao = () => {
-    if (confirm('Atenção: Isso irá resetar todos os dados para os valores iniciais de demonstração. Deseja continuar?')) {
-      db.resetToDefault();
-      alert('Dados resetados com sucesso!');
-      window.location.reload();
+  const handleZerarBancoLimpo = () => {
+    if (confirm('Atenção: Isso irá APAGAR TODOS os dados existentes (clientes, produtos, estoque, pedidos, orçamentos, vendas e financeiro), deixando o sistema 100% limpo para você cadastrar seus dados reais. Deseja continuar?')) {
+      db.limparTodosDados();
+      alert('Sistema zerado com sucesso! Todos os dados de teste foram removidos e o sistema está limpo.');
     }
   };
 
@@ -783,8 +782,13 @@ export const ConfigView: React.FC<ConfigViewProps> = ({ onNavigate }) => {
                 />
               </label>
 
-              <button type="button" className="sec bad" onClick={handleResetPadrao}>
-                Resetar Dados
+              <button
+                type="button"
+                className="sec bad"
+                onClick={handleZerarBancoLimpo}
+                title="Apagar permanentemente todos os dados de teste e iniciar base limpa"
+              >
+                🗑️ Zerar Todos os Dados (Iniciar Limpo)
               </button>
             </div>
           </div>
