@@ -74,11 +74,12 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
     setClienteEdicao(null);
   };
 
-  const handleArquivar = (id: number) => {
-    if (!confirm('Deseja arquivar este cliente?')) return;
+  const handleExcluirCliente = (id: number) => {
+    const cli = data.clientes.find((x) => x.id === id);
+    const nome = cli ? cli.nome : `Cliente #${id}`;
+    if (!confirm(`Deseja realmente excluir permanentemente o cliente "${nome}"?`)) return;
     db.update((state) => {
-      const c = state.clientes.find((x) => x.id === id);
-      if (c) c.ativo = false;
+      state.clientes = state.clientes.filter((x) => x.id !== id);
     });
     setClienteSelecionadoId(null);
   };
@@ -114,8 +115,8 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
             >
               Editar Ficha
             </button>
-            <button className="sec bad" onClick={() => handleArquivar(clienteAtual.id)}>
-              Arquivar
+            <button className="sec bad" onClick={() => handleExcluirCliente(clienteAtual.id)} title="Excluir cliente">
+              Excluir Cliente
             </button>
           </div>
         </div>
@@ -327,13 +328,21 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
                       </button>
                       <button
                         className="sec"
-                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                         onClick={() => {
                           setClienteEdicao(c);
                           setModalNovo(true);
                         }}
                       >
                         Editar
+                      </button>
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleExcluirCliente(c.id)}
+                        title="Excluir cliente"
+                      >
+                        Excluir
                       </button>
                     </td>
                   </tr>

@@ -204,6 +204,51 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
     }
   };
 
+  const handleExcluirRolo = (id: number) => {
+    if (!confirm(`Deseja realmente excluir o rolo #${id} do estoque? Todos os registros e movimentações deste rolo serão removidos.`)) {
+      return;
+    }
+    db.update((state) => {
+      state.rolos = state.rolos.filter((r) => r.id !== id);
+      state.movimentos = state.movimentos.filter((m) => !(m.item_tipo === 'rolo' && m.item_id === id));
+    });
+  };
+
+  const handleExcluirInsumo = (id: number) => {
+    const ins = data.insumos.find((i) => i.id === id);
+    const nome = ins ? ins.nome : `Insumo #${id}`;
+    if (!confirm(`Deseja realmente excluir o insumo "${nome}" do estoque?`)) {
+      return;
+    }
+    db.update((state) => {
+      state.insumos = state.insumos.filter((i) => i.id !== id);
+      state.movimentos = state.movimentos.filter((m) => !(m.item_tipo === 'insumo' && m.item_id === id));
+    });
+  };
+
+  const handleZerarEstoqueProduto = (id: number) => {
+    const sl = sdProdutos[id] || 0;
+    const prod = data.produtos.find((p) => p.id === id);
+    const nome = prod ? prod.nome : `Produto #${id}`;
+    if (sl === 0) {
+      alert(`O estoque pronto de "${nome}" já está zerado.`);
+      return;
+    }
+    if (!confirm(`Deseja realmente zerar o estoque pronto de "${nome}" (${sl} un)?`)) {
+      return;
+    }
+    registrarMov('produto', id, -sl, 'ajuste', 'produto', id, 'Estoque pronto zerado manualmente');
+  };
+
+  const handleExcluirMovimento = (id: number) => {
+    if (!confirm('Deseja realmente excluir este lançamento do livro-razão de estoque?')) {
+      return;
+    }
+    db.update((state) => {
+      state.movimentos = state.movimentos.filter((m) => m.id !== id);
+    });
+  };
+
   const movimentosFiltrados = data.movimentos.filter((m) => {
     if (filtroTipoMov && m.item_tipo !== filtroTipoMov) return false;
     if (filtroMotivoMov && m.motivo !== filtroMotivoMov) return false;
@@ -339,13 +384,21 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
                     <td className="r">
                       <button
                         className="sec"
-                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                         onClick={() => {
                           setModalAjusteRolo(r);
                           setAjusteNovoPeso(saldoAtual);
                         }}
                       >
                         Pesar
+                      </button>
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleExcluirRolo(r.id)}
+                        title="Excluir rolo do estoque"
+                      >
+                        Excluir
                       </button>
                     </td>
                   </tr>
@@ -388,7 +441,7 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
                     <td className="r">
                       <button
                         className="sec"
-                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                         onClick={() => {
                           const novo = prompt(`Novo saldo para ${i.nome}:`, String(sl));
                           if (novo !== null) {
@@ -400,6 +453,14 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
                         }}
                       >
                         Ajustar
+                      </button>
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleExcluirInsumo(i.id)}
+                        title="Excluir insumo do estoque"
+                      >
+                        Excluir
                       </button>
                     </td>
                   </tr>
@@ -443,13 +504,36 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
                     <td className="r">
                       <button
                         className="sec"
-                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                         onClick={() => {
                           setProducaoProdutoId(p.id);
                           setModalProducaoDireta(true);
                         }}
                       >
                         + Produzir
+                      </button>
+                      <button
+                        className="sec"
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
+                        onClick={() => {
+                          const novo = prompt(`Ajustar saldo em estoque de ${p.nome}:`, String(sl));
+                          if (novo !== null) {
+                            const val = Number(novo);
+                            if (!isNaN(val)) {
+                              registrarMov('produto', p.id, val - sl, 'ajuste', 'produto', p.id, 'Ajuste manual de estoque pronto');
+                            }
+                          }
+                        }}
+                      >
+                        Ajustar
+                      </button>
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleZerarEstoqueProduto(p.id)}
+                        title="Zerar estoque pronto deste produto"
+                      >
+                        Zerar
                       </button>
                     </td>
                   </tr>
@@ -499,6 +583,7 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
                   <th>Delta (Movimento)</th>
                   <th>Motivo</th>
                   <th>Observação</th>
+                  <th className="r">Ação</th>
                 </tr>
               </thead>
               <tbody>
@@ -528,6 +613,16 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
                       </td>
                       <td><span className="tag">{m.motivo}</span></td>
                       <td style={{ color: 'var(--muted)', fontSize: 13 }}>{m.obs || '-'}</td>
+                      <td className="r">
+                        <button
+                          className="sec bad"
+                          style={{ padding: '2px 6px', fontSize: 11 }}
+                          onClick={() => handleExcluirMovimento(m.id)}
+                          title="Excluir movimentação do histórico"
+                        >
+                          Excluir
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}

@@ -72,6 +72,20 @@ export const VendasView: React.FC<VendasViewProps> = ({ onNavigate, vendaId }) =
     estornarVenda(v.id);
   };
 
+  const handleExcluirVenda = (id: number) => {
+    if (!confirm(`Deseja realmente excluir permanentemente a venda #${id}? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    db.update((state) => {
+      state.lancamentos = state.lancamentos.filter((l) => l.venda_id !== id);
+      state.movimentos = state.movimentos.filter((m) => !(m.ref_tipo === 'venda' && m.ref_id === id));
+      state.vendas = state.vendas.filter((v) => v.id !== id);
+    });
+    if (vendaSelecionadaId === id) {
+      setVendaSelecionadaId(null);
+    }
+  };
+
   // Se vendo detalhe de uma venda
   if (vendaAtual) {
     const cli = vendaAtual.cliente_id ? data.clientes.find((c) => c.id === vendaAtual.cliente_id) : null;
@@ -90,12 +104,15 @@ export const VendasView: React.FC<VendasViewProps> = ({ onNavigate, vendaId }) =
             </span>
           </div>
 
-          <div>
+          <div style={{ display: 'flex', gap: 8 }}>
             {vendaAtual.status === 'ativa' && (
-              <button className="sec bad" onClick={() => handleEstornar(vendaAtual)}>
-                Estornar Venda
+              <button className="sec" onClick={() => handleEstornar(vendaAtual)}>
+                Estornar
               </button>
             )}
+            <button className="sec bad" onClick={() => handleExcluirVenda(vendaAtual.id)} title="Excluir venda permanentemente">
+              Excluir Venda
+            </button>
           </div>
         </div>
 
@@ -252,10 +269,18 @@ export const VendasView: React.FC<VendasViewProps> = ({ onNavigate, vendaId }) =
                     <td className="r">
                       <button
                         className="sec"
-                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                         onClick={() => setVendaSelecionadaId(v.id)}
                       >
                         Detalhes
+                      </button>
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleExcluirVenda(v.id)}
+                        title="Excluir venda permanentemente"
+                      >
+                        Excluir
                       </button>
                     </td>
                   </tr>

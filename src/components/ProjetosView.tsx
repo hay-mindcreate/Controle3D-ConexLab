@@ -62,11 +62,12 @@ export const ProjetosView: React.FC<ProjetosViewProps> = ({ onNavigate, projetoI
     setProjetoSelecionadoId(savedId);
   };
 
-  const handleArquivar = (id: number) => {
-    if (!confirm('Deseja arquivar este arquivo de projeto?')) return;
+  const handleExcluirProjeto = (id: number) => {
+    const proj = data.projetos.find((x) => x.id === id);
+    const nome = proj ? proj.nome : `Projeto #${id}`;
+    if (!confirm(`Deseja realmente excluir permanentemente o projeto "${nome}"?`)) return;
     db.update((state) => {
-      const p = state.projetos.find((x) => x.id === id);
-      if (p) p.ativo = false;
+      state.projetos = state.projetos.filter((x) => x.id !== id);
     });
     setProjetoSelecionadoId(null);
   };
@@ -92,8 +93,8 @@ export const ProjetosView: React.FC<ProjetosViewProps> = ({ onNavigate, projetoI
             >
               📥 Baixar Arquivo ({projetoAtual.arquivo_nome})
             </button>
-            <button className="sec bad" onClick={() => handleArquivar(projetoAtual.id)}>
-              Arquivar
+            <button className="sec bad" onClick={() => handleExcluirProjeto(projetoAtual.id)} title="Excluir projeto">
+              Excluir Projeto
             </button>
           </div>
         </div>
@@ -215,13 +216,23 @@ export const ProjetosView: React.FC<ProjetosViewProps> = ({ onNavigate, projetoI
 
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <code style={{ fontSize: 11 }}>{p.arquivo_nome}</code>
-              <button
-                className="sec"
-                style={{ padding: '3px 8px', fontSize: 12 }}
-                onClick={() => setProjetoSelecionadoId(p.id)}
-              >
-                Ver Detalhes
-              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className="sec"
+                  style={{ padding: '3px 8px', fontSize: 12 }}
+                  onClick={() => setProjetoSelecionadoId(p.id)}
+                >
+                  Ver
+                </button>
+                <button
+                  className="sec bad"
+                  style={{ padding: '3px 8px', fontSize: 12 }}
+                  onClick={() => handleExcluirProjeto(p.id)}
+                  title="Excluir projeto"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
           </div>
         ))}

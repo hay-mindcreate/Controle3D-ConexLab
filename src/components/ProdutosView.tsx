@@ -176,11 +176,15 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
     setProdutoSelecionadoId(savedId);
   };
 
-  const handleArquivar = (id: number) => {
-    if (!confirm('Deseja arquivar este produto?')) return;
+  const handleExcluirProduto = (id: number) => {
+    const prod = data.produtos.find((x) => x.id === id);
+    const nome = prod ? prod.nome : `Produto #${id}`;
+    if (!confirm(`Deseja realmente excluir permanentemente o produto "${nome}"? Esta ação removerá o produto do catálogo e seu saldo de estoque.`)) {
+      return;
+    }
     db.update((state) => {
-      const p = state.produtos.find((x) => x.id === id);
-      if (p) p.ativo = false;
+      state.produtos = state.produtos.filter((x) => x.id !== id);
+      state.movimentos = state.movimentos.filter((m) => !(m.item_tipo === 'produto' && m.item_id === id));
     });
     setProdutoSelecionadoId(null);
   };
@@ -588,8 +592,8 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => handleEditar(produtoAtual)}>Editar Ficha</button>
-            <button className="sec bad" onClick={() => handleArquivar(produtoAtual.id)}>
-              Arquivar
+            <button className="sec bad" onClick={() => handleExcluirProduto(produtoAtual.id)} title="Excluir produto permanentemente">
+              Excluir Produto
             </button>
           </div>
         </div>
@@ -753,10 +757,18 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
                       </button>
                       <button
                         className="sec"
-                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        style={{ padding: '3px 8px', fontSize: 13, marginRight: 6 }}
                         onClick={() => handleEditar(p)}
                       >
                         Editar
+                      </button>
+                      <button
+                        className="sec bad"
+                        style={{ padding: '3px 8px', fontSize: 13 }}
+                        onClick={() => handleExcluirProduto(p.id)}
+                        title="Excluir produto permanentemente"
+                      >
+                        Excluir
                       </button>
                     </td>
                   </tr>
