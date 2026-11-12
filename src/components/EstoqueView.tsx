@@ -4,6 +4,7 @@ import { db } from '../db';
 import {
   baixarModeloCsv,
   exportarBackupExcel,
+  exportarTabelaParaCsv,
   ImportResult,
   processarArquivoImportacao,
 } from '../importExport';
@@ -255,6 +256,172 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
     return true;
   });
 
+  const handleExportarFilamentosCsv = () => {
+    const cabecalhos = [
+      'ID Rolo',
+      'Material',
+      'Cor',
+      'Marca',
+      'Saldo Restante (g)',
+      'Peso Inicial (g)',
+      'Restante (%)',
+      'Custo por Grama (R$)',
+      'Preço Pago (R$)',
+      'Comprado Em',
+      'Fornecedor',
+      'Situação',
+    ];
+    const linhas = data.rolos.filter((r) => r.ativo).map((r) => {
+      const mat = data.materiais.find((m) => m.id === r.material_id);
+      const saldoAtual = sdRolos[r.id] || 0;
+      const pct = Math.max(0, Math.min(100, (saldoAtual / (r.peso_inicial || 1000)) * 100));
+      const custoG = r.peso_inicial > 0 ? r.preco / r.peso_inicial : 0;
+      const situacao = saldoAtual <= 0 ? 'Acabou' : (mat && saldoAtual <= mat.minimo_g ? 'Acabando' : 'Normal');
+      return [
+        `#${r.id}`,
+        mat?.tipo || 'PLA',
+        mat?.cor || '-',
+        mat?.marca || '-',
+        saldoAtual,
+        r.peso_inicial,
+        pct.toFixed(1),
+        custoG.toFixed(4),
+        r.preco.toFixed(2),
+        r.comprado_em,
+        r.fornecedor || '-',
+        situacao,
+      ];
+    });
+    exportarTabelaParaCsv('estoque-filamentos', cabecalhos, linhas);
+  };
+
+  const handleExportarInsumosCsv = () => {
+    const cabecalhos = [
+      'ID',
+      'Insumo',
+      'Unidade',
+      'Custo Unitário (R$)',
+      'Saldo Atual',
+      'Estoque Mínimo',
+      'Fornecedor',
+      'Situação',
+    ];
+    const linhas = data.insumos.filter((i) => i.ativo).map((i) => {
+      const sl = sdInsumos[i.id] || 0;
+      const situacao = sl <= 0 ? 'Acabou' : (sl <= i.minimo ? 'Acabando' : 'Normal');
+      return [
+        i.id,
+        i.nome,
+        i.unidade,
+        i.custo_unit.toFixed(2),
+        sl,
+        i.minimo,
+        i.fornecedor || '-',
+        situacao,
+      ];
+    });
+    exportarTabelaParaCsv('estoque-insumos', cabecalhos, linhas);
+  };
+
+  const handleExportarProdutosProntosCsv = () => {
+    const cabecalhos = [
+      'SKU',
+      'Produto',
+      'Categoria',
+      'Preço Venda (R$)',
+      'Saldo Pronto (un)',
+      'Estoque Mínimo (un)',
+      'Situação',
+    ];
+    const linhas = data.produtos.filter((p) => p.ativo).map((p) => {
+      const sl = sdProdutos[p.id] || 0;
+      const situacao = sl <= p.minimo ? (sl <= 0 ? 'Zerado' : 'Abaixo do Mínimo') : 'Normal';
+      return [
+        p.sku,
+        p.nome,
+        p.categoria || '-',
+        p.preco.toFixed(2),
+        sl,
+        p.minimo || 0,
+        situacao,
+      ];
+    });
+    exportarTabelaParaCsv('estoque-produtos-prontos', cabecalhos, linhas);
+  };
+
+  const handleExportarMovimentosCsv = () => {
+    const cabecalhos = [
+      'ID',
+      'Data/Hora',
+      'Tipo de Item',
+      'Item',
+      'Movimento (Delta)',
+      'Unidade',
+      'Motivo',
+      'Observação',
+      'Valor (R$)',
+      'Fornecedor / Ref',
+    ];
+    const linhas = movimentosFiltrados.map((m) => {
+      let nomeItem = `Item #${m.item_id}`;
+      if (m.item_tipo === 'rolo') {
+        const r = data.rolos.find((x) => x.id === m.item_id);
+        const mat = r ? data.materiais.find((x) => x.id === r.material_id) : null;
+        nomeItem = `Rolo #${m.item_id} (${mat ? `${mat.tipo} ${mat.cor}` : ''})`;
+      } else if (m.item_tipo === 'insumo') {
+        nomeItem = data.insumos.find((x) => x.id === m.item_id)?.nome || nomeItem;
+      } else if (m.item_tipo === 'produto') {
+        nomeItem = data.produtos.find((x) => x.id === m.item_id)?.nome || nomeItem;
+      }
+      const un = m.item_tipo === 'rolo' ? 'g' : 'un';
+      return [
+        m.id,
+        new Date(m.em).toLocaleString('pt-BR'),
+        m.item_tipo,
+        nomeItem,
+        m.delta,
+        un,
+        m.motivo,
+        m.obs || '',
+        m.valor ? m.valor.toFixed(2) : '',
+        m.fornecedor || '',
+      ];
+    });
+    exportarTabelaParaCsv('estoque-livro-razao', cabecalhos, linhas);
+  };
+
+  const handleExportarAlertasCsv = () => {
+    const cabecalhos = ['Tipo', 'Item', 'Saldo Atual', 'Estoque Mínimo', 'Situação'];
+    const linhas = baixo.map((a) => [
+      a.tipo,
+      a.nome,
+      a.saldo,
+      a.minimo,
+      a.status.toUpperCase(),
+    ]);
+    exportarTabelaParaCsv('estoque-alertas', cabecalhos, linhas);
+  };
+
+  const handleExportarAbaAtualCsv = () => {
+    switch (aba) {
+      case 'filamentos':
+        handleExportarFilamentosCsv();
+        break;
+      case 'insumos':
+        handleExportarInsumosCsv();
+        break;
+      case 'produtos':
+        handleExportarProdutosProntosCsv();
+        break;
+      case 'movimentos':
+        handleExportarMovimentosCsv();
+        break;
+      case 'alertas':
+        handleExportarAlertasCsv();
+        break;
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
@@ -264,6 +431,7 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
           <button className="sec" onClick={() => setModalNovoInsumo(true)}>+ Novo Insumo</button>
           <button className="sec" onClick={() => setModalProducaoDireta(true)}>⚙ Registrar Produção</button>
           <button className="sec" onClick={() => setModalImportar(true)} title="Importar filamentos, insumos, produtos e clientes via CSV ou Excel">📥 Importar CSV / Excel</button>
+          <button className="sec" onClick={handleExportarAbaAtualCsv} title="Exportar dados da tabela exibida nesta aba para arquivo CSV">📥 Exportar CSV</button>
           <button className="sec" onClick={() => exportarBackupExcel()} title="Baixar todas as planilhas do estoque e sistema em formato Excel (.xlsx)">📊 Backup Excel (.xlsx)</button>
         </div>
       </div>
@@ -332,8 +500,21 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
 
       {/* ABA FILAMENTOS */}
       {aba === 'filamentos' && (
-        <div className="card wrap">
-          <table>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Carretéis em Estoque ({data.rolos.filter((r) => r.ativo).length})</span>
+            <button
+              type="button"
+              className="sec"
+              style={{ fontSize: 12, padding: '3px 8px' }}
+              onClick={handleExportarFilamentosCsv}
+              title="Exportar filamentos para CSV"
+            >
+              📥 Exportar CSV
+            </button>
+          </div>
+          <div className="card wrap">
+            <table>
             <thead>
               <tr>
                 <th>Rolo</th>
@@ -407,11 +588,25 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
             </tbody>
           </table>
         </div>
+        </div>
       )}
 
       {/* ABA INSUMOS */}
       {aba === 'insumos' && (
-        <div className="card wrap">
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Insumos e Componentes ({data.insumos.filter((i) => i.ativo).length})</span>
+            <button
+              type="button"
+              className="sec"
+              style={{ fontSize: 12, padding: '3px 8px' }}
+              onClick={handleExportarInsumosCsv}
+              title="Exportar insumos para CSV"
+            >
+              📥 Exportar CSV
+            </button>
+          </div>
+          <div className="card wrap">
           <table>
             <thead>
               <tr>
@@ -468,12 +663,26 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {/* ABA PRODUTOS PRONTOS */}
       {aba === 'produtos' && (
-        <div className="card wrap">
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Estoque de Peças Prontas ({data.produtos.filter((p) => p.ativo).length})</span>
+            <button
+              type="button"
+              className="sec"
+              style={{ fontSize: 12, padding: '3px 8px' }}
+              onClick={handleExportarProdutosProntosCsv}
+              title="Exportar produtos prontos para CSV"
+            >
+              📥 Exportar CSV
+            </button>
+          </div>
+          <div className="card wrap">
           <table>
             <thead>
               <tr>
@@ -541,36 +750,49 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {/* ABA LIVRO-RAZÃO / MOVIMENTOS */}
       {aba === 'movimentos' && (
         <div>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-            <select
-              value={filtroTipoMov}
-              onChange={(e) => setFiltroTipoMov(e.target.value)}
-              style={{ width: 160 }}
-            >
-              <option value="">Todos os tipos</option>
-              <option value="rolo">Rolos (Filamento)</option>
-              <option value="insumo">Insumos</option>
-              <option value="produto">Produtos Prontos</option>
-            </select>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <select
+                value={filtroTipoMov}
+                onChange={(e) => setFiltroTipoMov(e.target.value)}
+                style={{ width: 160 }}
+              >
+                <option value="">Todos os tipos</option>
+                <option value="rolo">Rolos (Filamento)</option>
+                <option value="insumo">Insumos</option>
+                <option value="produto">Produtos Prontos</option>
+              </select>
 
-            <select
-              value={filtroMotivoMov}
-              onChange={(e) => setFiltroMotivoMov(e.target.value)}
-              style={{ width: 160 }}
+              <select
+                value={filtroMotivoMov}
+                onChange={(e) => setFiltroMotivoMov(e.target.value)}
+                style={{ width: 160 }}
+              >
+                <option value="">Todos os motivos</option>
+                <option value="compra">Compra</option>
+                <option value="producao">Produção</option>
+                <option value="falha">Falha</option>
+                <option value="venda">Venda</option>
+                <option value="ajuste">Ajuste</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              className="sec"
+              style={{ fontSize: 12, padding: '4px 10px' }}
+              onClick={handleExportarMovimentosCsv}
+              title="Exportar movimentações exibidas para CSV"
+              disabled={movimentosFiltrados.length === 0}
             >
-              <option value="">Todos os motivos</option>
-              <option value="compra">Compra</option>
-              <option value="producao">Produção</option>
-              <option value="falha">Falha</option>
-              <option value="venda">Venda</option>
-              <option value="ajuste">Ajuste</option>
-            </select>
+              📥 Exportar CSV ({movimentosFiltrados.length})
+            </button>
           </div>
 
           <div className="card wrap">
@@ -634,7 +856,22 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
 
       {/* ABA ALERTAS */}
       {aba === 'alertas' && (
-        <div className="card wrap">
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Alertas de Estoque ({baixo.length})</span>
+            {baixo.length > 0 && (
+              <button
+                type="button"
+                className="sec"
+                style={{ fontSize: 12, padding: '3px 8px' }}
+                onClick={handleExportarAlertasCsv}
+                title="Exportar alertas para CSV"
+              >
+                📥 Exportar CSV
+              </button>
+            )}
+          </div>
+          <div className="card wrap">
           {baixo.length === 0 ? (
             <p className="ok" style={{ padding: 12 }}>
               ✓ Todos os itens acompanhados estão com níveis normais de estoque!
@@ -665,6 +902,7 @@ export const EstoqueView: React.FC<EstoqueViewProps> = ({ onNavigate, abaInicial
               </tbody>
             </table>
           )}
+          </div>
         </div>
       )}
 

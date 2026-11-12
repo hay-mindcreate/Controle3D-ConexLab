@@ -25,6 +25,43 @@ export function gerarSku(categoria: string, produtos: Produto[]): string {
   return `${prefixo}${String(maxNum + 1).padStart(4, '0')}`;
 }
 
+/**
+ * Exporta dados tabulares para arquivo CSV com formatação adequada para o Excel em português (delimitador ';' e BOM UTF-8).
+ */
+export function exportarTabelaParaCsv(
+  nomeArquivo: string,
+  cabecalhos: string[],
+  linhas: (string | number | null | undefined)[][]
+) {
+  const escapeCsv = (val: string | number | null | undefined): string => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(';') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const conteudoCsv = [
+    cabecalhos.map(escapeCsv).join(';'),
+    ...linhas.map((linha) => linha.map(escapeCsv).join(';')),
+  ].join('\r\n');
+
+  const blob = new Blob(['\uFEFF' + conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const nomeLimpo = nomeArquivo.toLowerCase().endsWith('.csv')
+    ? nomeArquivo
+    : `${nomeArquivo}-${hoje}.csv`;
+  a.download = nomeLimpo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function exportarBackupExcel() {
   const data = db.get();
   const hoje = new Date().toISOString().split('T')[0];

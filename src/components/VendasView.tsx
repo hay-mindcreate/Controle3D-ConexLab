@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatBrl } from '../calc';
 import { db } from '../db';
+import { exportarTabelaParaCsv } from '../importExport';
 import { estornarVenda, vendaAvulsa } from '../services';
 import { Venda } from '../types';
 import { NavTab } from './Navigation';
@@ -84,6 +85,41 @@ export const VendasView: React.FC<VendasViewProps> = ({ onNavigate, vendaId }) =
     if (vendaSelecionadaId === id) {
       setVendaSelecionadaId(null);
     }
+  };
+
+  const handleExportarCsv = () => {
+    const cabecalhos = [
+      'ID Venda',
+      'Data',
+      'Cliente',
+      'Canal',
+      'Forma de Pagamento',
+      'Total (R$)',
+      'Custo (R$)',
+      'Taxas (R$)',
+      'Lucro Líquido (R$)',
+      'Status',
+      'Itens',
+    ];
+    const linhas = vendasFiltradas.map((v) => {
+      const cli = v.cliente_id ? data.clientes.find((c) => c.id === v.cliente_id)?.nome : 'Balcão';
+      const canal = v.canal_id ? data.canais.find((c) => c.id === v.canal_id)?.nome : 'Balcão';
+      const itensStr = v.itens.map((it) => `${it.qtd}x ${it.descricao}`).join(' | ');
+      return [
+        `#${String(v.id).padStart(4, '0')}`,
+        v.data,
+        cli || 'Balcão',
+        canal || 'Balcão',
+        v.forma_pagamento,
+        v.total.toFixed(2),
+        v.custo.toFixed(2),
+        v.taxa.toFixed(2),
+        v.lucro.toFixed(2),
+        v.status,
+        itensStr,
+      ];
+    });
+    exportarTabelaParaCsv(`vendas-${filtroMes || 'todas'}`, cabecalhos, linhas);
   };
 
   // Se vendo detalhe de uma venda
@@ -190,9 +226,20 @@ export const VendasView: React.FC<VendasViewProps> = ({ onNavigate, vendaId }) =
   // Lista de vendas
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ margin: 0 }}>Vendas ({vendasFiltradas.length})</h2>
-        <button onClick={() => setModalNovaVenda(true)}>+ Nova Venda de Balcão</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="sec"
+            onClick={handleExportarCsv}
+            title="Exportar vendas exibidas para arquivo CSV"
+            disabled={vendasFiltradas.length === 0}
+          >
+            📥 Exportar CSV
+          </button>
+          <button onClick={() => setModalNovaVenda(true)}>+ Nova Venda de Balcão</button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>

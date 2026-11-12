@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { formatBrl } from '../calc';
 import { db } from '../db';
+import { exportarTabelaParaCsv } from '../importExport';
 import { Cliente, Orcamento, Pedido, Venda } from '../types';
 import { NavTab } from './Navigation';
 
@@ -84,6 +85,67 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
     setClienteSelecionadoId(null);
   };
 
+  const handleExportarCsv = () => {
+    const cabecalhos = [
+      'ID',
+      'Nome',
+      'Telefone',
+      'E-mail',
+      'CPF/CNPJ',
+      'Endereço',
+      'Observações',
+      'Total Comprado (R$)',
+    ];
+    const linhas = filtrados.map((c) => {
+      const compras = data.vendas
+        .filter((v) => v.cliente_id === c.id && v.status === 'ativa')
+        .reduce((acc, v) => acc + v.total, 0);
+      return [
+        c.id,
+        c.nome,
+        c.telefone || '',
+        c.email || '',
+        c.documento || '',
+        c.endereco || '',
+        c.observacoes || '',
+        compras.toFixed(2),
+      ];
+    });
+    exportarTabelaParaCsv('clientes', cabecalhos, linhas);
+  };
+
+  const handleExportarPedidosClienteCsv = () => {
+    if (!clienteAtual) return;
+    const cabecalhos = ['Número Pedido', 'Status', 'Prazo', 'Total (R$)', 'Observações'];
+    const linhas = pedidosCliente.map((p) => {
+      const total = p.itens.reduce((acc, it) => acc + it.qtd * it.preco_unit, 0) - p.desconto + p.frete;
+      return [
+        `#${String(p.id).padStart(4, '0')}`,
+        p.status,
+        p.prazo || '',
+        total.toFixed(2),
+        p.observacoes || '',
+      ];
+    });
+    exportarTabelaParaCsv(`pedidos-cliente-${clienteAtual.id}`, cabecalhos, linhas);
+  };
+
+  const handleExportarOrcamentosClienteCsv = () => {
+    if (!clienteAtual) return;
+    const cabecalhos = ['Número Orçamento', 'Data', 'Status', 'Total (R$)', 'Validade (dias)'];
+    const linhas = orcamentosCliente.map((o) => {
+      const total = o.itens.reduce((acc, it) => acc + it.qtd * it.preco_unit, 0) - o.desconto + o.frete;
+      return [
+        `#${String(o.id).padStart(4, '0')}`,
+        o.data,
+        o.status,
+        total.toFixed(2),
+        o.validade_dias,
+      ];
+    });
+    exportarTabelaParaCsv(`orcamentos-cliente-${clienteAtual.id}`, cabecalhos, linhas);
+  };
+
   // Se visualizando ficha detalhada
   if (clienteAtual) {
     return (
@@ -162,7 +224,20 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
           {/* Pedidos */}
           <div className="card wrap">
-            <h4 style={{ margin: '0 0 10px' }}>Pedidos de Produção ({pedidosCliente.length})</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h4 style={{ margin: 0 }}>Pedidos de Produção ({pedidosCliente.length})</h4>
+              {pedidosCliente.length > 0 && (
+                <button
+                  type="button"
+                  className="sec"
+                  style={{ fontSize: 12, padding: '3px 8px' }}
+                  onClick={handleExportarPedidosClienteCsv}
+                  title="Exportar pedidos deste cliente para CSV"
+                >
+                  📥 Exportar CSV
+                </button>
+              )}
+            </div>
             {pedidosCliente.length === 0 ? (
               <p className="muted">Nenhum pedido registrado.</p>
             ) : (
@@ -206,7 +281,20 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
 
           {/* Orçamentos */}
           <div className="card wrap">
-            <h4 style={{ margin: '0 0 10px' }}>Orçamentos ({orcamentosCliente.length})</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h4 style={{ margin: 0 }}>Orçamentos ({orcamentosCliente.length})</h4>
+              {orcamentosCliente.length > 0 && (
+                <button
+                  type="button"
+                  className="sec"
+                  style={{ fontSize: 12, padding: '3px 8px' }}
+                  onClick={handleExportarOrcamentosClienteCsv}
+                  title="Exportar orçamentos deste cliente para CSV"
+                >
+                  📥 Exportar CSV
+                </button>
+              )}
+            </div>
             {orcamentosCliente.length === 0 ? (
               <p className="muted">Nenhum orçamento emitido.</p>
             ) : (
@@ -255,16 +343,27 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ onNavigate, clienteI
   // Lista geral de clientes
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ margin: 0 }}>Clientes ({clientesAtivos.length})</h2>
-        <button
-          onClick={() => {
-            setClienteEdicao({ nome: '', telefone: '', email: '', documento: '', endereco: '', observacoes: '' });
-            setModalNovo(true);
-          }}
-        >
-          + Novo Cliente
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="sec"
+            onClick={handleExportarCsv}
+            title="Exportar dados de clientes exibidos para arquivo CSV"
+            disabled={filtrados.length === 0}
+          >
+            📥 Exportar CSV
+          </button>
+          <button
+            onClick={() => {
+              setClienteEdicao({ nome: '', telefone: '', email: '', documento: '', endereco: '', observacoes: '' });
+              setModalNovo(true);
+            }}
+          >
+            + Novo Cliente
+          </button>
+        </div>
       </div>
 
       <div style={{ marginBottom: 14 }}>

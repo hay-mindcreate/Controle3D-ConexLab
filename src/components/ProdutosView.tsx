@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { formatBrl, formatDec } from '../calc';
 import { db } from '../db';
-import { gerarSku } from '../importExport';
+import { exportarTabelaParaCsv, gerarSku } from '../importExport';
 import { custoProduto, saldos } from '../services';
 import { Produto, ProdutoInsumo, ProdutoMaterial } from '../types';
 import { NavTab } from './Navigation';
@@ -187,6 +187,59 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
       state.movimentos = state.movimentos.filter((m) => !(m.item_tipo === 'produto' && m.item_id === id));
     });
     setProdutoSelecionadoId(null);
+  };
+
+  const handleExportarCsv = () => {
+    const cabecalhos = [
+      'SKU',
+      'Produto',
+      'Categoria',
+      'Tempo Impressão (min)',
+      'Unidades por Lote',
+      'Custo Produção (R$)',
+      'Preço Venda (R$)',
+      'Margem Real (%)',
+      'Margem Alvo (%)',
+      'Estoque Pronto (un)',
+      'Estoque Mínimo (un)',
+      'Impressora Padrão',
+    ];
+    const linhas = filtrados.map((p) => {
+      const c = custoProduto(p, data.config, null, sdRolos).custo;
+      const margemReal = p.preco > 0 ? ((p.preco - c) / p.preco) * 100 : 0;
+      const slPronto = sdProdutos[p.id] || 0;
+      const imp = p.impressora_id ? data.impressoras.find((i) => i.id === p.impressora_id)?.nome : 'Nenhuma';
+      return [
+        p.sku,
+        p.nome,
+        p.categoria || '',
+        p.tempo_min,
+        p.lote_qtd || 1,
+        c.toFixed(2),
+        p.preco.toFixed(2),
+        margemReal.toFixed(1),
+        p.margem_pct,
+        slPronto,
+        p.minimo || 0,
+        imp || 'Nenhuma',
+      ];
+    });
+    exportarTabelaParaCsv('produtos-catalogo', cabecalhos, linhas);
+  };
+
+  const handleExportarPrecosCanaisCsv = () => {
+    if (!produtoAtual) return;
+    const cabecalhos = ['Canal de Venda', 'Taxa (%)', 'Taxa Fixa (R$)', 'Preço Sugerido (R$)'];
+    const linhas = data.canais.filter((c) => c.ativo).map((cn) => {
+      const pCanal = custoProduto(produtoAtual, data.config, cn, sdRolos).preco;
+      return [
+        cn.nome,
+        cn.taxa_pct,
+        cn.taxa_fixa.toFixed(2),
+        pCanal !== null && pCanal !== undefined ? pCanal.toFixed(2) : '0.00',
+      ];
+    });
+    exportarTabelaParaCsv(`precos-canais-${produtoAtual.sku}`, cabecalhos, linhas);
   };
 
   // Live preview para o formulário
@@ -631,7 +684,18 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
 
         {/* Tabela de preços em cada canal de venda */}
         <div className="card wrap" style={{ marginBottom: 16 }}>
-          <h4 style={{ margin: '0 0 10px' }}>Preços Sugeridos nos Canais de Venda</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h4 style={{ margin: 0 }}>Preços Sugeridos nos Canais de Venda</h4>
+            <button
+              type="button"
+              className="sec"
+              style={{ fontSize: 12, padding: '3px 8px' }}
+              onClick={handleExportarPrecosCanaisCsv}
+              title="Exportar preços por canal para CSV"
+            >
+              📥 Exportar CSV
+            </button>
+          </div>
           <table>
             <thead>
               <tr>
@@ -663,9 +727,20 @@ export const ProdutosView: React.FC<ProdutosViewProps> = ({ onNavigate, produtoI
   // Lista padrão do catálogo
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <h2 style={{ margin: 0 }}>Produtos Cadastrados ({produtosAtivos.length})</h2>
-        <button onClick={handleIniciarNovo}>+ Novo Produto</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="sec"
+            onClick={handleExportarCsv}
+            title="Exportar catálogo de produtos exibidos para arquivo CSV"
+            disabled={filtrados.length === 0}
+          >
+            📥 Exportar CSV
+          </button>
+          <button onClick={handleIniciarNovo}>+ Novo Produto</button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
